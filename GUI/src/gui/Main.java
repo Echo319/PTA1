@@ -209,9 +209,11 @@ public class Main extends javax.swing.JFrame implements KeyListener {
     }// </editor-fold>//GEN-END:initComponents
 
     private void sendButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_sendButtonActionPerformed
-        // TODO add your handling code here:
         // Take the value in the outputText turn into byte array and send down output stream
+        String messageToSend = outputField.getText();
+        writeToOutputStream(messageToSend);
         // Clear text box
+        outputField.setText("");
     }//GEN-LAST:event_sendButtonActionPerformed
 
     private void leftRoomBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_leftRoomBtnActionPerformed
@@ -316,16 +318,16 @@ public class Main extends javax.swing.JFrame implements KeyListener {
         int keyCode = e.getKeyCode();
         switch (e.getKeyCode()) {
             case KeyEvent.VK_W:
-                writeToOutputStream(Character.toString((char)keyCode));
+                writeToOutputStream(Character.toString((char) keyCode));
                 break;
             case KeyEvent.VK_A:
-                writeToOutputStream(Character.toString((char)keyCode));
+                writeToOutputStream(Character.toString((char) keyCode));
                 break;
             case KeyEvent.VK_S:
-                writeToOutputStream(Character.toString((char)keyCode));
+                writeToOutputStream(Character.toString((char) keyCode));
                 break;
             case KeyEvent.VK_D:
-                writeToOutputStream(Character.toString((char)keyCode));
+                writeToOutputStream(Character.toString((char) keyCode));
                 break;
             default:
                 break;
