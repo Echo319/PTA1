@@ -58,6 +58,8 @@ public class Main extends javax.swing.JFrame implements KeyListener {
         leftButton.addKeyListener(this);
         rightButton.addKeyListener(this);
         sendButton.addKeyListener(this);
+        leftRoomBtn.addKeyListener(this);
+        rightRoomBtn.addKeyListener(this);
     }
 
     // Writing to outputstream
@@ -87,6 +89,8 @@ public class Main extends javax.swing.JFrame implements KeyListener {
         outputField = new javax.swing.JTextField();
         sendButton = new javax.swing.JButton();
         outputLabel = new javax.swing.JLabel();
+        leftRoomBtn = new javax.swing.JButton();
+        rightRoomBtn = new javax.swing.JButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
         setResizable(false);
@@ -114,6 +118,20 @@ public class Main extends javax.swing.JFrame implements KeyListener {
 
         outputLabel.setText("Output");
 
+        leftRoomBtn.setText("Room L");
+        leftRoomBtn.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                leftRoomBtnActionPerformed(evt);
+            }
+        });
+
+        rightRoomBtn.setText("Room R");
+        rightRoomBtn.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                rightRoomBtnActionPerformed(evt);
+            }
+        });
+
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
@@ -137,10 +155,17 @@ public class Main extends javax.swing.JFrame implements KeyListener {
                 .addGap(18, 18, 18)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(layout.createSequentialGroup()
-                        .addComponent(outputField, javax.swing.GroupLayout.PREFERRED_SIZE, 95, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(sendButton))
-                    .addComponent(outputLabel))
+                        .addComponent(leftRoomBtn)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addComponent(rightRoomBtn))
+                    .addGroup(layout.createSequentialGroup()
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addGroup(layout.createSequentialGroup()
+                                .addComponent(outputField, javax.swing.GroupLayout.PREFERRED_SIZE, 95, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(sendButton))
+                            .addComponent(outputLabel))
+                        .addGap(0, 0, Short.MAX_VALUE)))
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
         layout.setVerticalGroup(
@@ -161,9 +186,14 @@ public class Main extends javax.swing.JFrame implements KeyListener {
                             .addComponent(rightButton))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(backwardsButton, javax.swing.GroupLayout.PREFERRED_SIZE, 23, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                        .addComponent(outputField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addComponent(sendButton)))
+                    .addGroup(layout.createSequentialGroup()
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(outputField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(sendButton))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(rightRoomBtn)
+                            .addComponent(leftRoomBtn))))
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
@@ -175,6 +205,16 @@ public class Main extends javax.swing.JFrame implements KeyListener {
         // Take the value in the outputText turn into byte array and send down output stream
         // Clear text box
     }//GEN-LAST:event_sendButtonActionPerformed
+
+    private void leftRoomBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_leftRoomBtnActionPerformed
+        writeToOutputStream("RL");
+        readFromInputStream();
+    }//GEN-LAST:event_leftRoomBtnActionPerformed
+
+    private void rightRoomBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_rightRoomBtnActionPerformed
+        writeToOutputStream("RR");
+        readFromInputStream();
+    }//GEN-LAST:event_rightRoomBtnActionPerformed
 
     /**
      * @param args the command line arguments
@@ -217,9 +257,11 @@ public class Main extends javax.swing.JFrame implements KeyListener {
     private javax.swing.JLabel inputStreamLabel;
     private javax.swing.JTextArea inputText;
     private javax.swing.JButton leftButton;
+    private javax.swing.JButton leftRoomBtn;
     private javax.swing.JTextField outputField;
     private javax.swing.JLabel outputLabel;
     private javax.swing.JButton rightButton;
+    private javax.swing.JButton rightRoomBtn;
     private javax.swing.JButton sendButton;
     // End of variables declaration//GEN-END:variables
 
