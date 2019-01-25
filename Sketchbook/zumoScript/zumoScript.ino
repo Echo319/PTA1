@@ -214,4 +214,12 @@ void scanRoom() {
      }
   }
   Serial.flush();
+  clearSerial();
+}
+
+// Clear the serial, Dont want to queue commands while the arduino is busy.
+void clearSerial() {
+  while(Serial.available()) {
+    Serial.read();
+  }
 }
