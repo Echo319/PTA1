@@ -206,7 +206,12 @@ void scanRoom() {
     }
   }
   stop();
-  if(object == true) 
-    Serial.println("Object in room");
+  if(object == true) {
+     if(!returning) {
+        Serial.println("Object in room");
+     } else {
+      digitalWrite(13, HIGH);
+     }
+  }
   Serial.flush();
 }
