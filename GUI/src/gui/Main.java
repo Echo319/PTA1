@@ -8,7 +8,10 @@ package gui;
 import com.fazecast.jSerialComm.SerialPort;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
+import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import javax.swing.ButtonModel;
@@ -213,12 +216,10 @@ public class Main extends javax.swing.JFrame implements KeyListener {
 
     private void leftRoomBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_leftRoomBtnActionPerformed
         writeToOutputStream("RL");
-        readFromInputStream();
     }//GEN-LAST:event_leftRoomBtnActionPerformed
 
     private void rightRoomBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_rightRoomBtnActionPerformed
         writeToOutputStream("RR");
-        readFromInputStream();
     }//GEN-LAST:event_rightRoomBtnActionPerformed
 
     /**
@@ -342,8 +343,6 @@ public class Main extends javax.swing.JFrame implements KeyListener {
                     char message = (char) br.read();
                     inputText.append("" + message);
                 } catch (IOException e) {
-                    //System.exit(1);
-                    //e.printStackTrace();
                 }
             }
         }
