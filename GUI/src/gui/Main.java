@@ -24,7 +24,8 @@ public class Main extends javax.swing.JFrame implements KeyListener {
     private static final SerialPort SERIAL = SerialPort.getCommPort("COM4");
     private static OutputStream outputStream;
     private static InputStream inputStream;
-
+    private InputListener il;
+    
     /**
      * Creates new form Main
      */
@@ -39,6 +40,10 @@ public class Main extends javax.swing.JFrame implements KeyListener {
         // Get port as output stream for ease of writing 
         outputStream = SERIAL.getOutputStream();
         inputStream = SERIAL.getInputStream();
+
+        // Create inputStream listener to keep inputText upto date
+        il = new InputListener();
+        il.start();
 
         // Bind each button to a changelistener with a decimal attached
         forwardButton.getModel().addChangeListener(new BtnModelListener("W"));
@@ -323,6 +328,24 @@ public class Main extends javax.swing.JFrame implements KeyListener {
                 break;
             default:
                 break;
+        }
+    }
+    // saving commands after the start button has been pressed using a List of this class
+    // Listens on the input stream concurrently.
+    private class InputListener extends Thread {
+        
+        @Override
+        public void run() {
+            BufferedReader br = new BufferedReader(new InputStreamReader(inputStream));
+            while (true) {
+                try {
+                    char message = (char) br.read();
+                    inputText.append("" + message);
+                } catch (IOException e) {
+                    //System.exit(1);
+                    //e.printStackTrace();
+                }
+            }
         }
     }
 }
