@@ -15,6 +15,9 @@ unsigned int sensorValues[NUM_SENSORS];
 
 int speed = 100; // max speed is 255
 bool object = false;
+bool started = false;
+bool returning = false;
+int ends = 0;
 
 void setup(void)
 {
@@ -60,9 +63,11 @@ void loop(void)
       break;
     case 'G'://start
     case 'g':
+      startOrEnd();
       break;
     case 'C'://continue
     case 'c':
+      autoMode();
       break;
     case 'e'://End of Junction
     case 'E':
@@ -81,6 +86,28 @@ void loop(void)
     default:
       stop();
       break;
+  }
+}
+
+void startOrEnd(){
+  //flag that we have started
+  started = !started;
+  if (started == false) {
+    returning = false;
+    digitalWrite(13, LOW);
+  } 
+}
+
+void endOfJunction() {
+  //TODO: Task 5 and 6
+  ends++;
+  if(ends < 2) {
+    // TODO: Task5
+  } else {
+    // Task 6; TODO: alt behaviour on rooms
+    ends = 0;
+    //flag returning
+    returning = true;
   }
 }
 
