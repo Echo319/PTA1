@@ -58,6 +58,15 @@ void loop(void)
     case 'D':
       right (speed);
       break;
+    case 'G'://start
+    case 'g':
+      break;
+    case 'C'://continue
+    case 'c':
+      break;
+    case 'e'://End of Junction
+    case 'E':
+      break;          
     case 'r': //Do a room
     case 'R':
         // left or right?
