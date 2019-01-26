@@ -13,7 +13,7 @@ ZumoReflectanceSensorArray reflectanceSensors;
 #define NUM_SENSORS 6
 unsigned int sensorValues[NUM_SENSORS];
 
-int speed = 100; // max speed is 255
+int speed = 200; // max speed is 255
 bool object = false;
 bool started = false;
 bool returning = false;
@@ -169,10 +169,10 @@ void roomRight() {
   // turn right 90 degrees
   right(speed);
   //tune this to get turn right
-  delay(100);
+  delay(400);
   // move forward a bit 
   forward(speed);
-  delay(100);
+  delay(400);
   stop();
   scanRoom();
   Serial.println("ready");
@@ -182,10 +182,10 @@ void roomLeft() {
   // turn left 90 degrees
   left(speed);
   // tune this to get turn right
-  delay(100);
+  delay(400);
   // move forward a bit 
   forward(speed);
-  delay(100);
+  delay(400);
   stop();
   scanRoom();
   Serial.println("ready");
@@ -197,7 +197,7 @@ void scanRoom() {
   left(150);
   // tune this untill we 360
   long currentTime = millis();
-  long endTime = currentTime + 2700;
+  long endTime = currentTime + 2500;
   while(currentTime < endTime) {
     currentTime = millis();
     int distance = sonar.ping_cm();
