@@ -1,5 +1,6 @@
 #include <ZumoShield.h>
 #include <NewPing.h>
+#include <Wire.h>
 
 #define TRIGGER_PIN  6 // Arduino pin tied to trigger pin on the ultrasonic sensor.
 #define ECHO_PIN     2  // Arduino pin tied to echo pin on the ultrasonic sensor.
@@ -14,6 +15,7 @@ LSM303 compass;
 ZumoMotors motors;
 NewPing sonar(TRIGGER_PIN, ECHO_PIN, MAX_DISTANCE); // NewPing setup of pins and maximum distance.
 ZumoReflectanceSensorArray reflectanceSensors;
+Pushbutton button(ZUMO_BUTTON);
 // Define an array for holding sensor values.
 #define NUM_SENSORS 6
 unsigned int sensorValues[NUM_SENSORS];
@@ -26,13 +28,17 @@ int ends = 0;
 
 void setup(void)
 {
-  calibrateRSA();
-  calibrateCompass();
-  
   int i;
   for(i=5;i<=8;i++)
   pinMode(i, OUTPUT);
   Serial.begin(9600);
+  //Have to be plugged in to calibrate compass
+  calibrateRSA();
+  delay(1000);
+  calibrateCompass();
+  Serial.println("Calibrations complete - can now unplug");
+  Serial.println("Press button when ready to continue");
+  button.waitForButton();
   Serial.println("setup");
 }
 
@@ -163,9 +169,7 @@ void autoMode() {
 
 void roomRight() {
   // turn right 90 degrees
-  right(speed);
-  //tune this to get turn right
-  delay(400);
+  turnDegrees(90); //270?
   // move forward a bit 
   forward(speed);
   delay(400);
@@ -175,10 +179,7 @@ void roomRight() {
 }
 
 void roomLeft() {
-  // turn left 90 degrees
-  left(speed);
-  // tune this to get turn right
-  delay(400);
+  turnDegrees(-90);
   // move forward a bit 
   forward(speed);
   delay(400);
@@ -189,17 +190,15 @@ void roomLeft() {
 
 void scanRoom() {
   object = false;
-  // tune this till we can nolonger detect objects
-  left(150);
-  // tune this untill we 360
-  long currentTime = millis();
-  long endTime = currentTime + 2500;
-  while(currentTime < endTime) {
-    currentTime = millis();
+  int angle = 0; 
+  // spin 360 degrees 
+  while(angle < 360) {
+    turnDegrees(10);
     int distance = sonar.ping_cm();
     if(distance <= 20) {
       object = true;
     }
+    angle = angle + 10;
   }
   stop();
   if(object == true) {
@@ -222,8 +221,9 @@ void clearSerial() {
 
 
 // RSA code comes from Calibrate sensor example of Zumo library
-void calibrateRSA() {
-    //initialise and calibrate reflectance sensors
+void calibrateRSA(void) {
+  //initialise and calibrate reflectance sensors
+  Serial.println("Calibrating sensors");
   reflectanceSensors.init();
   delay(500);
   pinMode(13, OUTPUT);
@@ -234,22 +234,29 @@ void calibrateRSA() {
     reflectanceSensors.calibrate();
   }
   digitalWrite(13, LOW);         // turn off LED to indicate we are through with calibration
+  Serial.println("Done calibrating");
 }
 
 // All compass code was adapted from the compass example of the zumo library mostly the same however
 // its also a complete mess
 void calibrateCompass() {
+  Serial.println("Calibrating compass");
   // The highest possible magnetic value to read in any direction is 2047
   // The lowest possible magnetic value to read in any direction is -2047
   LSM303::vector<int16_t> running_min = {32767, 32767, 32767}, running_max = {-32767, -32767, -32767};
   unsigned char index;
+  // Initiate the Wire library and join the I2C bus as a master
+  Wire.begin();
   // Initiate LSM303
+  Serial.println("Init compass");
   compass.init();
+  Serial.println("Compass.init() complete");
   // Enables accelerometer and magnetometer
   compass.enableDefault();
   compass.writeReg(LSM303::CRB_REG_M, CRB_REG_M_2_5GAUSS); // +/- 2.5 gauss sensitivity to hopefully avoid overflow problems
   compass.writeReg(LSM303::CRA_REG_M, CRA_REG_M_220HZ);    // 220 Hz compass update rate
-
+  
+  Serial.println("Setting x,y min max");
   // To calibrate the magnetometer, the Zumo spins to find the max/min
   // magnetic vectors. This information is used to correct for offsets
   // in the magnetometer data.
@@ -280,8 +287,7 @@ void calibrateCompass() {
 // want the acceleration of the Zumo to factor spuriously into the
 // tilt compensation that LSM303::heading() performs. This calculation
 // assumes that the Zumo is always level.
-template <typename T> float heading(LSM303::vector<T> v)
-{
+template <typename T> float heading(LSM303::vector<T> v) {
   float x_scaled =  2.0*(float)(v.x - compass.m_min.x) / ( compass.m_max.x - compass.m_min.x) - 1.0;
   float y_scaled =  2.0*(float)(v.y - compass.m_min.y) / (compass.m_max.y - compass.m_min.y) - 1.0;
 
@@ -292,10 +298,8 @@ template <typename T> float heading(LSM303::vector<T> v)
 }
 
 // Yields the angle difference in degrees between two headings
-float relativeHeading(float heading_from, float heading_to)
-{
+float relativeHeading(float heading_from, float heading_to) {
   float relative_heading = heading_to - heading_from;
-
   // constrain to -180 to 180 degree range
   if (relative_heading > 180)
     relative_heading -= 360;
@@ -307,8 +311,7 @@ float relativeHeading(float heading_from, float heading_to)
 
 // Average 10 vectors to get a better measurement and help smooth out
 // the motors' magnetic interference.
-float averageHeading()
-{
+float averageHeading() {
   LSM303::vector<int32_t> avg = {0, 0, 0};
 
   for(int i = 0; i < 10; i ++)
@@ -326,10 +329,14 @@ float averageHeading()
 
 
 void turnDegrees(int angle) {
-    float heading, relative_heading;
+    Serial.println(averageHeading() + angle);
+    
+    float target_heading = fmod(averageHeading() + angle, 360);
+    float heading = averageHeading();
+    float relative_heading = relativeHeading(heading, target_heading);
     int comSpeed;
-    static float target_heading = target_heading = fmod(averageHeading() + angle, 360);
-    while(abs(relative_heading) < 2) {
+    //get within one degree either way. might make 0.5 
+    while(abs(relative_heading) > 1) {
       // Heading is given in degrees away from the magnetic vector, increasing clockwise
       heading = averageHeading();
       // This gives us the relative heading with respect to the target angle
