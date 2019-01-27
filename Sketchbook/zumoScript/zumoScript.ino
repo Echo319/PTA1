@@ -1,6 +1,14 @@
+#include <StackArray.h>
 #include <ZumoShield.h>
 #include <NewPing.h>
 #include <Wire.h>
+
+struct Location {
+  int32_t x;
+  int32_t y;
+  bool roomLeft = false;
+  bool roomRight = false;
+};
 
 #define TRIGGER_PIN  6 // Arduino pin tied to trigger pin on the ultrasonic sensor.
 #define ECHO_PIN     2  // Arduino pin tied to echo pin on the ultrasonic sensor.
@@ -25,6 +33,21 @@ bool object = false;
 bool started = false;
 bool returning = false;
 int ends = 0;
+
+StackArray<Location> locations;
+LSM303::vector<int32_t> getXY() {
+  
+  LSM303::vector<int32_t> avg = {0, 0, 0};
+  for(int i = 0; i < 10; i ++)
+  {
+    compass.read();
+    avg.x += compass.m.x;
+    avg.y += compass.m.y;
+  }
+  avg.x /= 10.0;
+  avg.y /= 10.0;
+  return avg;
+}
 
 void setup(void)
 {
@@ -69,6 +92,7 @@ void loop(void)
       break;
     case 'C'://continue
     case 'c':
+      saveNode();
       autoMode();
       break;
     case 'e'://End of Junction
@@ -89,6 +113,18 @@ void loop(void)
       stop();
       break;
   }
+}
+
+void saveNode() {
+  LSM303::vector<int32_t> avg;
+  avg = getXY();
+  Location l; 
+  l.x = compass.m.x;
+  l.y = compass.m.y;
+  Serial.print(l.x);
+  Serial.print("  -  ");
+  Serial.println(l.y);
+  locations.push(l);
 }
 
 void startOrEnd(){
@@ -219,6 +255,36 @@ void clearSerial() {
   }
 }
 
+//TASK6: ...
+void goHome() {
+  Serial.println("Going home");
+  Location currentPosition = locations.pop();
+  Location target = locations.pop();
+  float angle = atan2((currentPosition.y - target.y), (currentPosition.x - target.x))*180 / M_PI;  
+  // also want to turn around on the first move.
+  turnDegrees(180 - angle);
+  //while there are locations to visit
+  do {
+    // turn to where we want to go
+    turnDegrees(angle);
+    // find the distance as we are always working in straight corridors its fine to just go
+    int32_t distanceX = currentPosition.x - target.x;
+    int32_t distanceY= currentPosition.y - target.y;
+    float distanceH = sqrt((distanceX * distanceX) + (distanceY * distanceY));
+    // move for distance / speed = time
+    motors.setSpeeds(speed, speed);
+    delay((distanceH / speed) * 1000);
+    // stop
+    motors.setSpeeds(0,0);
+    // find next node
+    currentPosition = target;
+    target = locations.pop();
+    // recalculate angle
+    atan2((currentPosition.y - target.y), (currentPosition.x - target.x))*180 / M_PI; 
+  } while(!locations.isEmpty());
+}
+
+
 
 // RSA code comes from Calibrate sensor example of Zumo library
 void calibrateRSA(void) {
@@ -327,11 +393,35 @@ float averageHeading() {
   return heading(avg);
 }
 
-
 void turnDegrees(int angle) {
-    Serial.println(averageHeading() + angle);
-    
     float target_heading = fmod(averageHeading() + angle, 360);
+    float heading = averageHeading();
+    float relative_heading = relativeHeading(heading, target_heading);
+    int comSpeed;
+    //get within one degree either way. might make 0.5 
+    while(abs(relative_heading) > 1) {
+      // Heading is given in degrees away from the magnetic vector, increasing clockwise
+      heading = averageHeading();
+      // This gives us the relative heading with respect to the target angle
+      relative_heading = relativeHeading(heading, target_heading);
+      // To avoid overshooting, the closer the Zumo gets to the target
+      // heading, the slower it should turn. Set the motor speeds to a
+      // minimum base amount plus an additional variable amount based
+      // on the heading difference.
+      comSpeed = speed*relative_heading/180;
+      if (comSpeed < 0)
+        comSpeed -= (speed * 0.5);
+        else
+        comSpeed += (speed * 0.5);
+      motors.setSpeeds(comSpeed, -comSpeed);
+    }
+    // Turn off motors and wait a short time to reduce interference from motors
+    motors.setSpeeds(0, 0);
+    delay(100);
+}
+
+void turnTo(float angle) {
+    float target_heading = angle;
     float heading = averageHeading();
     float relative_heading = relativeHeading(heading, target_heading);
     int comSpeed;
