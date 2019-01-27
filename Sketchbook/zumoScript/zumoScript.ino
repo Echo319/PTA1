@@ -137,10 +137,9 @@ void startOrEnd(){
 }
 
 void endOfJunction() {
-  //TODO: Task 5 and 6
   ends++;
   if(ends < 2) {
-    // TODO: Task5
+    task5();
   } else {
     // Task 6; TODO: alt behaviour on rooms
     ends = 0;
@@ -148,6 +147,49 @@ void endOfJunction() {
     returning = true;
   }
 }
+
+void task5() {
+  //get current location
+  saveNode();
+  Location endOfJunction = locations.pop();
+  //Turn 180
+  turnDegrees(180);
+  // pop off a node
+  Location nextNode = locations.pop();
+  // go to it, 
+  goToNode(endOfJunction, nextNode);
+  // if its a room pop off another 
+  if(nextNode.roomLeft || nextNode.roomRight) {
+    Location middle = locations.pop();
+    //go to it
+    goToNode(nextNode, middle);
+    // put it back
+    locations.push(middle);
+  }
+  //put back the one we want
+  locations.push(nextNode);
+  //Ignore anything that gets sent while task 5 is being done.
+  clearSerial();
+}
+
+void goToNode(Location currentPosition, Location target) {
+  float angle = atan2((currentPosition.y - target.y), (currentPosition.x - target.x))*180 / M_PI;  
+  // also want to turn around on the first move.
+  //while there are locations to visit
+  // turn to where we want to go
+  turnDegrees(angle);
+  // find the distance as we are always working in straight corridors its fine to just go
+  int32_t distanceX = currentPosition.x - target.x;
+  int32_t distanceY= currentPosition.y - target.y;
+  float distanceH = sqrt((distanceX * distanceX) + (distanceY * distanceY));
+  // move for distance / speed = time
+  motors.setSpeeds(speed, speed);
+  delay((distanceH / speed) * 1000);
+  // stop
+  motors.setSpeeds(0,0);
+}
+
+
 
 void stop(void) //Stop
 {
