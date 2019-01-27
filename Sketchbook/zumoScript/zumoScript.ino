@@ -285,12 +285,12 @@ void scanRoom() {
   int angle = 0; 
   // spin 360 degrees 
   while(angle < 360) {
-    turnDegrees(10);
+    turnDegrees(90);
     int distance = sonar.ping_cm();
     if(distance <= 20) {
       object = true;
     }
-    angle = angle + 10;
+    angle = angle + 90;
   }
   stop();
   if(object == true) {
