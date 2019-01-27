@@ -62,9 +62,6 @@ void setup(void)
   calibrateRSA();
   delay(1000);
   calibrateCompass();
-  //Serial.println("Calibrations complete - can now unplug");
-  //Serial.println("Press button when ready to continue");
-  //button.waitForButton();
   Serial.println("setup");
 }
 
@@ -95,15 +92,6 @@ void loop(void)
       break;
     case 'C'://continue
     case 'c':
-      //Save the node on every c,
-      //Except if the room was empty
-      if(roomEmpty == false){
-        saveNode();
-      }
-      //reset flags
-      roomEmpty = false;
-      roomRightFlag = false;
-      roomLeftFlag = false;
       autoMode();
       break;
     case 'e'://End of Junction
@@ -148,13 +136,6 @@ void endOfJunction() {
   }
 }
 
-void task5() {
-}
-
-float scaledXorY(int32_t num) {
-  return 2.0*(float)(num - compass.m_min.x) / (compass.m_max.x - compass.m_min.x) - 1.0;
-}
-
 void stop(void) //Stop
 {
   motors.setSpeeds(0,0);
@@ -182,6 +163,8 @@ void right (int speed)
 
 void autoMode() {
   Serial.println("Starting auto mode");
+  float heading = averageHeading();
+  long startTime = millis();
   bool blocked = false;
   while(blocked != true) {
     reflectanceSensors.readLine(sensorValues);
@@ -205,8 +188,28 @@ void autoMode() {
   }
   Serial.println("Stopping");
   stop();
+  if(roomEmpty == false) {
+      saveNode(heading, millis() - startTime);
+  }
+  //reset flags 
+  roomEmpty = false;
+  roomRightFlag = false;
+  roomLeftFlag = false;
   //let the gui know we are ready for more instructions
   Serial.println("ready");
+}
+
+void saveNode(float heading, long duration){
+  Location l;
+  l.dir = heading;
+  l.duration = duration;
+  l.roomLeft = roomLeftFlag;
+  l.roomRight = roomRightFlag;
+  Serial.print("Adding location - ");
+  Serial.print(l.dir);
+  Serial.print(" - ");
+  Serial.println(l.duration);
+  locations.push(l);
 }
 
 void roomRight() {
@@ -218,6 +221,8 @@ void roomRight() {
   delay(600);
   stop();
   scanRoom();
+  forward(speed);
+  delay(600);
   Serial.println("ready");
 }
 
@@ -229,6 +234,8 @@ void roomLeft() {
   delay(600);
   stop();
   scanRoom();
+  forward(speed);
+  delay(600);
   Serial.println("ready");
 }
 
@@ -265,9 +272,62 @@ void clearSerial() {
   }
 }
 
+void task5() {
+  Location firstLoc = locations.pop();
+  goToLocation(firstLoc);
+  if(firstLoc.roomRight || firstLoc.roomLeft) {
+    Serial.println("Passed room");
+    Location secondLocation = locations.pop();
+    goToLocation(secondLocation);
+    locations.push(secondLocation);
+  }
+  Serial.println("At corridor ready to continue");
+  locations.push(firstLoc);
+  clearSerial();
+}
+
+void goToLocation(Location l) {
+  turnTo(l.dir);
+  turnDegrees(180);
+  autoWithTimeout(l.duration);
+  stop();
+}
+
+void autoWithTimeout(long timeout) {
+  bool blocked = false;
+  long startTime = millis();
+  while(blocked != true) {
+    reflectanceSensors.readLine(sensorValues);
+    if (sensorValues[2] > QTR_THRESHOLD || sensorValues[3] > QTR_THRESHOLD ) {
+      // if the middle sensors detect line, stop
+      blocked = true;
+      Serial.println("Obstruction"); 
+    } else if (sensorValues[0] > QTR_THRESHOLD) {
+      // if leftmost sensor detects line, reverse and turn to the right
+      motors.setSpeeds(0, -speed); 
+      timeout = timeout + 100;
+    } else if (sensorValues[5] > QTR_THRESHOLD) {
+      // if rightmost sensor detects line, reverse and turn to the left
+      motors.setSpeeds(-speed, 0);
+      timeout = timeout + 100;
+    } else {
+      // otherwise, go straight
+      forward(speed);
+    }
+    if(millis() - startTime > timeout) {
+      blocked = true;
+    }
+  }
+}
+
 //TASK6: ...
 void goHome() {
 }
+
+float scaledXorY(int32_t num) {
+  return 2.0*(float)(num - compass.m_min.x) / (compass.m_max.x - compass.m_min.x) - 1.0;
+}
+
 
 
 // RSA code comes from Calibrate sensor example of Zumo library
@@ -312,8 +372,7 @@ void calibrateCompass() {
   // in the magnetometer data.
   motors.setLeftSpeed(speed);
   motors.setRightSpeed(-speed);
-  for(index = 0; index < CALIBRATION_SAMPLES; index ++)
-  {
+  for(index = 0; index < CALIBRATION_SAMPLES; index ++){
     // Take a reading of the magnetic vector and store it in compass.m
     compass.read();
     running_min.x = min(running_min.x, compass.m.x);
@@ -383,7 +442,7 @@ void turnDegrees(int angle) {
     float relative_heading = relativeHeading(heading, target_heading);
     int comSpeed;
     //get within one degree either way. might make 0.5 
-    while(abs(relative_heading) > 1) {
+    while(abs(relative_heading) > 0.5) {
       // Heading is given in degrees away from the magnetic vector, increasing clockwise
       heading = averageHeading();
       // This gives us the relative heading with respect to the target angle
@@ -410,7 +469,7 @@ void turnTo(float angle) {
     float relative_heading = relativeHeading(heading, target_heading);
     int comSpeed;
     //get within one degree either way. might make 0.5 
-    while(abs(relative_heading) > 1) {
+    while(abs(relative_heading) > 0.5) {
       // Heading is given in degrees away from the magnetic vector, increasing clockwise
       heading = averageHeading();
       // This gives us the relative heading with respect to the target angle
