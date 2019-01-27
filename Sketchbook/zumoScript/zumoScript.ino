@@ -127,22 +127,6 @@ void loop(void)
   }
 }
 
-void saveNode() {
-  delay(100);
-  LSM303::vector<int32_t> avg;
-  avg = getXY();
-  Location l; 
-  l.x = compass.m.x;
-  l.y = compass.m.y;
-  l.roomLeft = roomLeftFlag;
-  l.roomRight = roomRightFlag;
-  Serial.print("New node - ");
-  Serial.print(l.x);
-  Serial.print("  -  ");
-  Serial.println(l.y);
-  locations.push(l);
-}
-
 void startOrEnd(){
   //flag that we have started
   started = !started;
