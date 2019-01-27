@@ -14,9 +14,6 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.PrintWriter;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 import javax.swing.ButtonModel;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
@@ -31,13 +28,6 @@ public class Main extends javax.swing.JFrame implements KeyListener {
     private static OutputStream outputStream;
     private static InputStream inputStream;
     private InputListener il;
-
-    private final List<CommandTime> recordedActions = new ArrayList<>();
-    private boolean recording = false;
-
-    // if a room has no object we can forget it. 
-    private List<CommandTime> tempActions = new ArrayList<>();
-    private int ends = 0;
 
     /**
      * Creates new form Main
@@ -86,48 +76,9 @@ public class Main extends javax.swing.JFrame implements KeyListener {
 
     // Writing to outputstream
     private void writeToOutputStream(String value) {
-        if (recording) {
-            tempActions.add(new CommandTime(value, System.currentTimeMillis()));
-        }
         try (PrintWriter writer = new PrintWriter(outputStream)) {
             writer.print(value);
         }
-    }
-
-    private void optimizeReturn() {
-        // reverse the recordedActions
-        Collections.reverse(recordedActions);
-        long lastTime = System.currentTimeMillis();
-        for (CommandTime c : recordedActions) {
-            System.out.println("Command - " + c.command + " - " + c.timeInMillis);
-            // buffer to stop the last command if needed.
-            writeToOutputStream("0");
-            // perform the action flipping left and rights
-            String command = c.command;
-            if (command.equals("A")) {
-                command = "D";
-            } else if (command.equals("D")) {
-                command = "A";
-            }
-            // flip rooms
-            if (command.equals("RR")) {
-                command = "RL";
-            } else if (command.equals("RL")) {
-                command = "RR";
-            }
-            writeToOutputStream(command);
-
-            // wait until the next command was queued
-            try {
-                Thread.sleep(lastTime - c.timeInMillis);
-            } catch (InterruptedException e) {
-                // Task6 is likely to fail if we dont wait so might as well crash
-                System.exit(1);
-            }
-            lastTime = c.timeInMillis;
-        }
-        // empty any recorded actions when returned home
-        recordedActions.clear();
     }
 
     // generated code
@@ -334,45 +285,19 @@ public class Main extends javax.swing.JFrame implements KeyListener {
 
     private void startButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_startButtonActionPerformed
         // stop/start recording
-        recording = !recording;
-        inputText.append("Recording - " + recording + "\n");
-        // flag the Zumo that we have started will also tell the zumo we have ended
         writeToOutputStream("G");
         // then start moving
-        writeToOutputStream("0");
         writeToOutputStream("C");
     }//GEN-LAST:event_startButtonActionPerformed
 
     private void continueBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_continueBtnActionPerformed
-        //TODO: don't save if the room is empty
-        if (recording) {
-            recordedActions.addAll(tempActions);
-            tempActions.clear();
-        }
-        //printing out all recorded command for debug
-        recordedActions.forEach((ct) -> {
-            System.out.println(ct.command + " - " + ct.timeInMillis);
-        });
         writeToOutputStream("C");
     }//GEN-LAST:event_continueBtnActionPerformed
 
     private void endBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_endBtnActionPerformed
         // Save temp actions when recording 
         // if and object is 
-        //TODO: might be pointing in the wrong direction
         writeToOutputStream("E");
-        ends++;
-        if (ends < 2) {
-            // TODO: navigate the half of the corridor just searched, autonomously, and ignore any instructions to turn into rooms or back down the main corridor
-        } else {
-            if (recording) {
-                recordedActions.addAll(tempActions);
-                tempActions.clear();
-                optimizeReturn();
-            }
-            ends = 0;
-            recording = false;
-        }
     }//GEN-LAST:event_endBtnActionPerformed
 
     private void stopButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_stopButtonActionPerformed
@@ -489,6 +414,11 @@ public class Main extends javax.swing.JFrame implements KeyListener {
             case KeyEvent.VK_D:
                 writeToOutputStream(Character.toString((char) keyCode));
                 break;
+            case KeyEvent.VK_C:
+                writeToOutputStream(" ");
+                break;
+            case KeyEvent.VK_0:
+                writeToOutputStream("0");
             default:
                 break;
         }
