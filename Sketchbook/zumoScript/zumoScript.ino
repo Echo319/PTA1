@@ -29,10 +29,13 @@ Pushbutton button(ZUMO_BUTTON);
 unsigned int sensorValues[NUM_SENSORS];
 
 int speed = 200; // max speed is 255
-bool object = false;
 bool started = false;
 bool returning = false;
 int ends = 0;
+// flags for what type of node should be saved
+bool roomEmpty = false;
+bool roomLeftFlag = false;
+bool roomRightFlag = false;
 
 StackArray<Location> locations;
 LSM303::vector<int32_t> getXY() {
@@ -92,7 +95,15 @@ void loop(void)
       break;
     case 'C'://continue
     case 'c':
-      saveNode();
+      //Save the node on every c,
+      //Except if the room was empty
+      if(roomEmpty == false){
+        saveNode();
+      }
+      //reset flags
+      roomEmpty = false;
+      roomRightFlag = false;
+      roomLeftFlag = false;
       autoMode();
       break;
     case 'e'://End of Junction
@@ -121,6 +132,8 @@ void saveNode() {
   Location l; 
   l.x = compass.m.x;
   l.y = compass.m.y;
+  l.roomLeft = roomLeftFlag;
+  l.roomRight = roomRightFlag;
   Serial.print(l.x);
   Serial.print("  -  ");
   Serial.println(l.y);
@@ -141,10 +154,9 @@ void endOfJunction() {
   if(ends < 2) {
     task5();
   } else {
-    // Task 6; TODO: alt behaviour on rooms
-    ends = 0;
-    //flag returning
     returning = true;
+    Serial.println("Going home");
+    goHome();
   }
 }
 
@@ -247,6 +259,7 @@ void autoMode() {
 
 void roomRight() {
   // turn right 90 degrees
+  roomRightFlag = true;
   turnDegrees(90); //270?
   // move forward a bit 
   forward(speed);
@@ -257,6 +270,7 @@ void roomRight() {
 }
 
 void roomLeft() {
+  roomLeftFlag = true;
   turnDegrees(-90);
   // move forward a bit 
   forward(speed);
@@ -267,7 +281,7 @@ void roomLeft() {
 }
 
 void scanRoom() {
-  object = false;
+  bool object = false;
   int angle = 0; 
   // spin 360 degrees 
   while(angle < 360) {
@@ -285,6 +299,8 @@ void scanRoom() {
      } else {
       digitalWrite(13, HIGH);
      }
+  } else {
+    roomEmpty = true;
   }
   Serial.flush();
   clearSerial();
@@ -299,7 +315,6 @@ void clearSerial() {
 
 //TASK6: ...
 void goHome() {
-  Serial.println("Going home");
   Location currentPosition = locations.pop();
   Location target = locations.pop();
   float angle = atan2((currentPosition.y - target.y), (currentPosition.x - target.x))*180 / M_PI;  
@@ -318,6 +333,13 @@ void goHome() {
     delay((distanceH / speed) * 1000);
     // stop
     motors.setSpeeds(0,0);
+    //if a room do room;
+    if(target.roomRight == true) {
+      roomRight();
+    }
+    if(target.roomLeft == true) {
+      roomLeft();
+    }
     // find next node
     currentPosition = target;
     target = locations.pop();
