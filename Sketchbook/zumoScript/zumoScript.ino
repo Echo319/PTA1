@@ -4,8 +4,8 @@
 #include <Wire.h>
 
 struct Location {
-  int32_t x;
-  int32_t y;
+  float dir;
+  long duration;
   bool roomLeft = false;
   bool roomRight = false;
 };
@@ -165,67 +165,11 @@ void endOfJunction() {
 }
 
 void task5() {
-  //get current location
-  saveNode();
-  Location endOfJunction = locations.pop();
-  // pop off a node
-  Location nextNode = locations.pop();
-  // go to it, 
-  goToNode(endOfJunction, nextNode);
-  // if its a room pop off another 
-  if(nextNode.roomLeft || nextNode.roomRight) {
-    Location middle = locations.pop();
-    //go to it
-    goToNode(nextNode, middle);
-    // put it back
-    locations.push(middle);
-  }
-  //put back the one we want
-  locations.push(nextNode);
-  //Ignore anything that gets sent while task 5 is being done.
-  clearSerial();
 }
-
 
 float scaledXorY(int32_t num) {
   return 2.0*(float)(num - compass.m_min.x) / (compass.m_max.x - compass.m_min.x) - 1.0;
 }
-
-void goToNode(Location currentPosition, Location target) {
-  Serial.print("Going from :");
-  Serial.print(currentPosition.x);
-  Serial.print(" - ");
-  Serial.println(currentPosition.y);
-  Serial.print("Going from :");
-  Serial.print(target.x);
-  Serial.print(" - ");
-  Serial.println(target.y);
-  float distanceX = currentPosition.x - target.x;
-  float distanceY= currentPosition.y - target.y;
-  if(abs(distanceY) > abs(distanceX)) {
-    //distanceX = 0;
-  } else {
-    //distanceY = 0;
-  }
-  float angle = atan(distanceY, distanceX)*180 / M_PI;  
-  // also want to turn around on the first move.
-  //while there are locations to visit
-  // turn to where we want to go
-  Serial.print("Turning ");
-  Serial.print(angle);
-  Serial.println(" degrees");
-  turnDegrees(angle);
-  // find the distance as we are always working in straight corridors its fine to just go
-
-  float distanceH = sqrt((distanceX * distanceX) + (distanceY * distanceY));
-  // move for distance / speed = time
-  motors.setSpeeds(speed, speed);
-  delay(((distanceH / speed) * 1000) - 500);
-  // stop
-  motors.setSpeeds(0,0);
-}
-
-
 
 void stop(void) //Stop
 {
@@ -339,47 +283,7 @@ void clearSerial() {
 
 //TASK6: ...
 void goHome() {
-  // get current location
-  saveNode();
-  Location currentPosition = locations.pop();
-  Location target = locations.pop();
-  float angle = atan2((currentPosition.y - target.y), (currentPosition.x - target.x))*180 / M_PI;  
-  // also want to turn around on the first move.
-  turnDegrees(180 - angle);
-  //while there are locations to visit
-  do {
-    locations.pop();
-    // turn to where we want to go
-    turnDegrees(angle);
-    // find the distance as we are always working in straight corridors its fine to just go
-    int32_t distanceX = currentPosition.x - target.x;
-    int32_t distanceY= currentPosition.y - target.y;
-    if(abs(distanceY) > abs(distanceX)) {
-      //distanceX = 0;
-    } else {
-      //distanceY = 0;
-    }
-    float distanceH = sqrt((distanceX * distanceX) + (distanceY * distanceY));
-    // move for distance / speed = time
-    motors.setSpeeds(speed, speed);
-    delay((distanceH / speed) * 1000);
-    // stop
-    motors.setSpeeds(0,0);
-    //if a room do room;
-    if(target.roomRight == true) {
-      roomRight();
-    }
-    if(target.roomLeft == true) {
-      roomLeft();
-    }
-    // find next node
-    currentPosition = target;
-    target = locations.peek();
-    // recalculate angle
-    atan2((currentPosition.y - target.y), (currentPosition.x - target.x))*180 / M_PI; 
-  } while(!locations.isEmpty());
 }
-
 
 
 // RSA code comes from Calibrate sensor example of Zumo library
