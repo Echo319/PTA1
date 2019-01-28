@@ -280,9 +280,9 @@ void task5() {
     Location secondLocation = locations.pop();
     goToLocation(secondLocation);
     locations.push(secondLocation);
+    locations.push(firstLoc);
   }
   Serial.println("At corridor ready to continue");
-  locations.push(firstLoc);
   clearSerial();
 }
 
@@ -305,11 +305,11 @@ void autoWithTimeout(long timeout) {
     } else if (sensorValues[0] > QTR_THRESHOLD) {
       // if leftmost sensor detects line, reverse and turn to the right
       motors.setSpeeds(0, -speed); 
-      timeout = timeout + 100;
+      timeout = timeout + 10;
     } else if (sensorValues[5] > QTR_THRESHOLD) {
       // if rightmost sensor detects line, reverse and turn to the left
       motors.setSpeeds(-speed, 0);
-      timeout = timeout + 100;
+      timeout = timeout + 10;
     } else {
       // otherwise, go straight
       forward(speed);
@@ -322,6 +322,21 @@ void autoWithTimeout(long timeout) {
 
 //TASK6: ...
 void goHome() {
+  while(!locations.isEmpty()) {
+    Location target = locations.peek();
+    turnTo(target.dir);
+    turnDegrees(180);    
+    autoWithTimeout(target.duration);
+    stop();
+    if(target.roomLeft) {
+      roomRight();
+    }
+    if(target.roomRight) {
+      roomLeft();
+    }
+    locations.pop();
+  }
+  digitalWrite(13, LOW);
 }
 
 float scaledXorY(int32_t num) {
