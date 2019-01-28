@@ -3,6 +3,7 @@
 #include <NewPing.h>
 #include <Wire.h>
 
+//Saving direction and duration of key moves to travel back 
 struct Location {
   float dir;
   long duration;
@@ -18,7 +19,7 @@ struct Location {
 #define CALIBRATION_SAMPLES 70  // Number of compass readings to take when calibrating
 #define CRB_REG_M_2_5GAUSS 0x60 // CRB_REG_M value for magnetometer +/-2.5 gauss full scale
 #define CRA_REG_M_220HZ    0x1C // CRA_REG_M value for magnetometer 220 Hz update rate
-
+//Components
 LSM303 compass;
 ZumoMotors motors;
 NewPing sonar(TRIGGER_PIN, ECHO_PIN, MAX_DISTANCE); // NewPing setup of pins and maximum distance.
@@ -58,7 +59,7 @@ void setup(void)
   for(i=5;i<=8;i++)
   pinMode(i, OUTPUT);
   Serial.begin(9600);
-  //Have to be plugged in to calibrate compass
+  //Calibrate Reflective sensors and compass
   calibrateRSA();
   delay(1000);
   calibrateCompass();
@@ -86,10 +87,6 @@ void loop(void)
     case 'D':
       right (speed);
       break;
-    case 'G'://start
-    case 'g':
-      startOrEnd();
-      break;
     case 'C'://continue
     case 'c':
       autoMode();
@@ -115,15 +112,7 @@ void loop(void)
   }
 }
 
-void startOrEnd(){
-  //flag that we have started
-  started = !started;
-  if (started == false) {
-    returning = false;
-    digitalWrite(13, LOW);
-  } 
-}
-
+//First press is task 5 second is task6
 void endOfJunction() {
   ends++;
   if(ends < 2) {
@@ -173,15 +162,16 @@ void autoMode() {
       blocked = true;
       Serial.println("Obstruction"); 
     } else if (sensorValues[0] > QTR_THRESHOLD) {
-      // if leftmost sensor detects line, reverse and turn to the right
+      // if leftmost sensor detects line, bounce to the right
       motors.setSpeeds(0, -speed); 
     } else if (sensorValues[5] > QTR_THRESHOLD) {
-      // if rightmost sensor detects line, reverse and turn to the left
+      // if rightmost sensor detects line, bounce to the left
       motors.setSpeeds(-speed, 0);
     } else {
       // otherwise, go straight
       forward(speed);
     }
+    //cancel command
     if(Serial.read() == '0') {
       blocked = true;
     }
@@ -199,6 +189,7 @@ void autoMode() {
   Serial.println("ready");
 }
 
+//Saving node to stack
 void saveNode(float heading, long duration){
   Location l;
   l.dir = heading;
@@ -220,8 +211,11 @@ void roomRight() {
   forward(speed);
   delay(600);
   stop();
+  //scan
   scanRoom();
+  // end up facing the wrong way
   turnDegrees(180);
+  //Get back onto the track
   forward(speed);
   delay(600);
   stop();
@@ -236,7 +230,9 @@ void roomLeft() {
   forward(speed);
   delay(600);
   stop();
+  //Scan room
   scanRoom();
+  // end up facing the wrong way
   turnDegrees(180);
   forward(speed);
   delay(600);
@@ -248,16 +244,18 @@ void roomLeft() {
 void scanRoom() {
   float startingAngle = averageHeading();
   bool object = false;
-  int angle = 0; 
-  // spin 360 degrees 
+  int angle = 0;
+  int distance;
+  // spin 360 degrees 90 at a time 
   while(angle <= 360) {
     turnTo(angle);
     angle += 90;
-    int distance = sonar.ping_cm();
-    if(distance <= 10) {
+    // if the object is close flag for message
+    if(distance < 10) {
       object = true;
     }
   }
+  //return to where we started
   turnTo(startingAngle);
   stop();
   if(object == true) {
@@ -267,6 +265,7 @@ void scanRoom() {
       digitalWrite(13, HIGH);
      }
   } else {
+    // flag to forget room
     roomEmpty = true;
   }
   Serial.flush();
@@ -281,12 +280,15 @@ void clearSerial() {
 }
 
 void task5() {
+  //get first node to go to
   Location firstLoc = locations.pop();
   goToLocation(firstLoc);
+  // if the current node is a room, do another to reach the middle.
   if(firstLoc.roomRight || firstLoc.roomLeft) {
     Serial.println("Passed room");
     Location secondLocation = locations.pop();
     goToLocation(secondLocation);
+    //We'll want to revisit this room so the middle and room go back on the stack
     locations.push(secondLocation);
     locations.push(firstLoc);
   }
@@ -294,6 +296,7 @@ void task5() {
   clearSerial();
 }
 
+//turn to direction and go for set amount of time.
 void goToLocation(Location l) {
   turnTo(l.dir);
   turnDegrees(180);
@@ -301,6 +304,7 @@ void goToLocation(Location l) {
   stop();
 }
 
+// Same auto script but will end after appropriate time.
 void autoWithTimeout(long timeout) {
   bool blocked = false;
   long startTime = millis();
@@ -311,11 +315,11 @@ void autoWithTimeout(long timeout) {
       blocked = true;
       Serial.println("Obstruction"); 
     } else if (sensorValues[0] > QTR_THRESHOLD) {
-      // if leftmost sensor detects line, reverse and turn to the right
+      // if leftmost sensor detects line, bounce to the right
       motors.setSpeeds(0, -speed); 
       timeout = timeout + 10;
     } else if (sensorValues[5] > QTR_THRESHOLD) {
-      // if rightmost sensor detects line, reverse and turn to the left
+      // if rightmost sensor detects line, bounce to the left
       motors.setSpeeds(-speed, 0);
       timeout = timeout + 10;
     } else {
@@ -328,22 +332,28 @@ void autoWithTimeout(long timeout) {
   }
 }
 
-//TASK6: ...
+//TASK6: same idea as task5 but on repeate
 void goHome() {
+  // while locations to go
   while(!locations.isEmpty()) {
+    // peek location
     Location target = locations.peek();
+    // turn to the direction we were faceing, then 180 to go back they way we came.
     turnTo(target.dir);
     turnDegrees(180);    
+    //Travel within the boundrys for the amount of time.
     autoWithTimeout(target.duration);
     stop();
+    //if this should have been a room do the opposite
     if(target.roomLeft) {
-      roomRight();
+      //roomRight();
     }
     if(target.roomRight) {
-      roomLeft();
+      //roomLeft();
     }
     locations.pop();
   }
+  // once done turn off light.
   digitalWrite(13, LOW);
 }
 
