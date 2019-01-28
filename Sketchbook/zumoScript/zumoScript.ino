@@ -221,9 +221,12 @@ void roomRight() {
   delay(600);
   stop();
   scanRoom();
+  turnDegrees(180);
   forward(speed);
   delay(600);
+  stop();
   Serial.println("ready");
+  clearSerial();
 }
 
 void roomLeft() {
@@ -234,23 +237,28 @@ void roomLeft() {
   delay(600);
   stop();
   scanRoom();
+  turnDegrees(180);
   forward(speed);
   delay(600);
+  stop();
   Serial.println("ready");
+  clearSerial();
 }
 
 void scanRoom() {
+  float startingAngle = averageHeading();
   bool object = false;
   int angle = 0; 
   // spin 360 degrees 
-  while(angle < 360) {
-    turnDegrees(90);
+  while(angle <= 360) {
+    turnTo(angle);
+    angle += 90;
     int distance = sonar.ping_cm();
-    if(distance <= 20) {
+    if(distance <= 10) {
       object = true;
     }
-    angle = angle + 90;
   }
+  turnTo(startingAngle);
   stop();
   if(object == true) {
      if(!returning) {
