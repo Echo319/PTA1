@@ -443,16 +443,4 @@ public class Main extends javax.swing.JFrame implements KeyListener {
             }
         }
     }
-
-    // saving commands after the start button has been pressed using a List of this class
-    private class CommandTime {
-
-        String command;
-        long timeInMillis;
-
-        public CommandTime(String command, long time) {
-            this.command = command;
-            timeInMillis = time;
-        }
-    }
 }
