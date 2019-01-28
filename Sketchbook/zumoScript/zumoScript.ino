@@ -1,6 +1,6 @@
+#include <NewPing.h>
 #include <StackArray.h>
 #include <ZumoShield.h>
-#include <NewPing.h>
 #include <Wire.h>
 
 //Saving direction and duration of key moves to travel back 
@@ -13,7 +13,7 @@ struct Location {
 
 #define TRIGGER_PIN  6 // Arduino pin tied to trigger pin on the ultrasonic sensor.
 #define ECHO_PIN     2  // Arduino pin tied to echo pin on the ultrasonic sensor.
-#define MAX_DISTANCE 100 // Maximum distance we want to ping for (in centimeters). Maximum sensor distance is rated at 400-500cm.
+#define MAX_DISTANCE 200 // Maximum distance we want to ping for (in centimeters). Maximum sensor distance is rated at 400-500cm.
 #define QTR_THRESHOLD 400
 // constants for compass 
 #define CALIBRATION_SAMPLES 70  // Number of compass readings to take when calibrating
@@ -29,7 +29,7 @@ Pushbutton button(ZUMO_BUTTON);
 #define NUM_SENSORS 6
 unsigned int sensorValues[NUM_SENSORS];
 
-int speed = 200; // max speed is 255
+int speed = 150; // max speed is 255
 bool started = false;
 bool returning = false;
 int ends = 0;
@@ -204,38 +204,46 @@ void saveNode(float heading, long duration){
 }
 
 void roomRight() {
+  Serial.println("Right Room");
   // turn right 90 degrees
   roomRightFlag = true;
+  Serial.println("90 degree turn");
   turnDegrees(90); //270?
   // move forward a bit 
   forward(speed);
-  delay(600);
+  delay(800);
   stop();
   //scan
+  Serial.println("Scanning");
   scanRoom();
   // end up facing the wrong way
+  Serial.println("Going back to course");
   turnDegrees(180);
   //Get back onto the track
   forward(speed);
-  delay(600);
+  delay(800);
   stop();
   Serial.println("ready");
   clearSerial();
 }
 
 void roomLeft() {
+  Serial.println("Left Room");
   roomLeftFlag = true;
+  Serial.println("90 degree turn");
   turnDegrees(-90);
   // move forward a bit 
   forward(speed);
-  delay(600);
+  delay(800);
   stop();
   //Scan room
+  Serial.println("Scanning");
   scanRoom();
   // end up facing the wrong way
   turnDegrees(180);
+  Serial.println("Going back to course");
   forward(speed);
-  delay(600);
+  delay(800);
   stop();
   Serial.println("ready");
   clearSerial();
@@ -243,32 +251,27 @@ void roomLeft() {
 
 void scanRoom() {
   float startingAngle = averageHeading();
-  bool object = false;
+  roomEmpty = true;
   int angle = 0;
   int distance;
-  // spin 360 degrees 90 at a time 
-  while(angle <= 360) {
-    turnTo(angle);
-    angle += 90;
-    // if the object is close flag for message
-    if(distance < 10) {
-      object = true;
+  // spin for a time checking ping distance. if below a theshold then room is not empty
+  long startTime = millis();
+  int timeout = 2000;
+  right(speed); 
+  while(millis() - startTime < timeout) {
+    distance = sonar.ping_cm();
+    if(distance < 15 && distance > 0) {
+      roomEmpty = false;    
+      if(!returning) {
+        Serial.println("Object in room");
+      } else {
+        digitalWrite(13, HIGH);
+      }
     }
   }
-  //return to where we started
+  stop();
   turnTo(startingAngle);
   stop();
-  if(object == true) {
-     if(!returning) {
-        Serial.println("Object in room");
-     } else {
-      digitalWrite(13, HIGH);
-     }
-  } else {
-    // flag to forget room
-    roomEmpty = true;
-  }
-  Serial.flush();
   clearSerial();
 }
 
@@ -281,6 +284,7 @@ void clearSerial() {
 
 void task5() {
   //get first node to go to
+  Serial.println("Task 5");
   Location firstLoc = locations.pop();
   goToLocation(firstLoc);
   // if the current node is a room, do another to reach the middle.
@@ -298,6 +302,10 @@ void task5() {
 
 //turn to direction and go for set amount of time.
 void goToLocation(Location l) {
+  Serial.print("Going to location - ");
+  Serial.print(l.dir);
+  Serial.print(" - ");
+  Serial.println(l.duration);
   turnTo(l.dir);
   turnDegrees(180);
   autoWithTimeout(l.duration);
@@ -317,17 +325,17 @@ void autoWithTimeout(long timeout) {
     } else if (sensorValues[0] > QTR_THRESHOLD) {
       // if leftmost sensor detects line, bounce to the right
       motors.setSpeeds(0, -speed); 
-      timeout = timeout + 10;
     } else if (sensorValues[5] > QTR_THRESHOLD) {
       // if rightmost sensor detects line, bounce to the left
       motors.setSpeeds(-speed, 0);
-      timeout = timeout + 10;
     } else {
       // otherwise, go straight
       forward(speed);
     }
+    // if the time has gone over the timeout 
     if(millis() - startTime > timeout) {
       blocked = true;
+      stop();
     }
   }
 }
